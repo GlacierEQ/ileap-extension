@@ -1,5 +1,5 @@
 <pre class='metadata'>
-Title: iLEAP Technical Specifications (Version 1.1.0-draft.1)
+Title: iLEAP Technical Specifications (Version 1.1.0-draft.2)
 Shortname: ileap-extension
 Status: LD
 Status Text: Technical Specification Pre-Release
@@ -47,13 +47,14 @@ emissions and activity data across organizations and IT systems. They do so by:
 
 ## Methodological Interoperability ## {#interop}
 
-Issue: This section might need further elaboration.
-
 The iLEAP Technical Specifications are based on [[!ISO14083|ISO14083:2023]],
 with which they are methodologically aligned and the [[!GLEC|GLEC Framework V3.1]].
 
 Furthermore, the specifications are designed to be methodologically interoperable
 with the [[!PACT-V2|PACT Methodology Version 2]] and [[!PACT-V3|Version 3]].
+
+
+Advisement: The iLEAP Technical Specifications will soon be updated to align with the upcoming GLEC Framework Version 3.3.
 
 
 ## PACT Technical Interoperability ## {#pact-interop}
@@ -258,7 +259,7 @@ Issue: Needs revision
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
 "OPTIONAL" in this document are to be interpreted as described in
-[BCP14](https://www.rfc-editor.org/info/bcp14) [[!RFC2119]]
+(BCP14)[https://www.rfc-editor.org/info/bcp14] [[!RFC2119]]
 [[!RFC8174]] when, and only when, they appear in all
 capitals, as shown here.
 
@@ -1073,7 +1074,7 @@ Note: The properties `tocId` and `hocId` are mutually exclusive, but one of them
         <td>String
         <td>M
         <td>
-            The [=transport activity=] of the TCE (in `tonne-kilometers`)
+            The [=transport activity=] of the TCE with unit `tonne-kilometers`.
 
             <div class=example>
                 If the transport [=distance=] is `700` `kilometers` and the mass is `230` `kilograms`,
@@ -2081,12 +2082,12 @@ emissions aggregated per transport mode and  an aggregation of all hub TCEs (see
             Number of packaging or transport equipment units utilized in the shipments referenced in
             <{AggregatedReport/shipmentIds}>.
       <tr>
-        <td><dfn>totalTransportActivity</dfn> : [=Decimal=]
+        <td><dfn>totalActivity</dfn> : [=Decimal=]
         <td>String
         <td>M
         <td>
-            The sum total of the transport activity of the shipments referenced in <{AggregatedReport/shipmentIds}>
-            (in `tonne-kilometers`).
+            The sum total of the transport and hub activity of the shipments referenced in <{AggregatedReport/shipmentIds}>
+            with unit `tonne-kilometers`.
       <tr>
         <td><dfn>co2eWTW</dfn> : [=Decimal=]
         <td>String
@@ -2374,9 +2375,12 @@ The following properties are defined for data type <dfn element>EnergyCarrier</d
         <td>
               The relative share of this energy carrier. Its value MUST be between `0` (excluding) and `1` (including).
 
+              The relative share of each energy carrier MUST be computed relative to the transport or hub activity.
+
               Note:
-                  See the respective use in (<{TOC/energyCarriers|TOC}>,
-                  <{HOC/energyCarriers|HOC}>, and <{TAD/energyCarriers|TAD}>)
+                  See the respective use in <{TOC/energyCarriers|TOC}>,
+                  <{HOC/energyCarriers|HOC}>, <{TAD/energyCarriers|TAD}>, and
+                  <{ModeSpecificReport/energyCarriers|ModeSpecificReport}>
                   for further details.
 
       <tr>
@@ -2595,6 +2599,24 @@ Advisement: The enumeration of packaging or transport equipment units above will
 
             : Hub
             :: Refers to hub operations in general
+      <tr>
+        <td><dfn>energyCarriers</dfn>
+        <td><{EnergyCarrier}>[]
+        <td>O
+        <td>
+              The non-empty array of [=EnergyCarriers=] used to generate mechanical movement or heat and to generate
+              chemical or physical processes, as defined in the [[!GLEC]] Framework.
+
+              The sum of the relative shares of the energy carriers used MUST equal 1. The relative share of each energy
+              carrier MUST be computed relative to the <{AggregatedReport/totalActivity}> of the <{AggregatedReport}>,
+              with unit `tonne-kilometers`.
+
+              To represent a single EnergyCarrierType produced from multiple feedstocks, each feedstock MUST be
+              represented by a separate entry in the EnergyCarriers array. For each EnergyCarrier, the combined value of
+              feedstockShares must be less than or equal to 1.
+
+              Note: See [[#appendix-b-ar-example]] for an example of how this property can be used to represent an
+              scenario of progressive electrification.
       <tr>
         <td><dfn>distanceTypes</dfn>
         <td>String[]
@@ -4529,6 +4551,12 @@ apply for additional support, materials, and marketing opportunities.
 
 # Appendix A: Changelog # {#changelog}
 
+## Version 1.1.0-draft.2 (2026-06-15) ## {#version-1.1.0-draft.2}
+
+- renaming of `totalTransportActivty` to <{AggregatedReport/totalActivity}> and updated definition accordingly
+- addition of <{ModeSpecificReport/energyCarriers}> to `ModeSpecificReport`
+- addition of [[#appendix-b-ar-example]]
+- reorganization of [[#appendix-b]] into subchapters
 
 ## Version 1.1.0-draft.1 (2026-04-09) ## {#version-1.1.0-draft.1}
 
@@ -4639,9 +4667,50 @@ Summary of changes:
 
 Initial release of the specification.
 
-# Appendix B: Example PCFs with iLEAP Data embedded # {#appendix-b}
+# Appendix B: Examples # {#appendix-b}
 
-## ShipmentFootprint example ## {#appendix-b-sf-example}
+## Example iLEAP Data ## {#appendix-b-ileap}
+
+### Aggregated Report example ### {#appendix-b-ar-example}
+
+An aggregated report for one shipment, with 70% of the transport activity powered by electricity and
+30% by diesel (highlighted).
+
+<div class=example>
+  <pre highlight='json' line-highlight="10-26" line-numbers>
+    {
+      "specVersion": "1.1.0",
+      "createdAt": "2026-04-24T00:00:00Z",
+      "reportId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "standardsUsed": ["ISO14083:2023"],
+      "shipmentIds": ["shipment-001"],
+      "status": "Active",
+      "totalTransportActivity": "1500.00",
+      "co2eWTW": "210.50",
+      "perModeEmissions": [
+        {
+          "transportMode": "Road",
+          "energyCarriers": [
+            {
+              "energyCarrier": "Diesel",
+              "relativeShare": "0.3"
+            },
+            {
+              "energyCarrier": "Electricity",
+              "relativeShare": "0.7"
+            }
+          ],
+          "distanceTypes": ["actual"],
+          "co2eWTW": "120.00"
+        }
+      ]
+    }
+  </pre>
+</div>
+
+## Example PCFs with iLEAP Data embedded ## {#appendix-b-pcfs}
+
+### ShipmentFootprint example ### {#appendix-b-sf-example}
 
 A Product Footprint with a <{ShipmentFootprint}> highlighted:
 
@@ -4723,7 +4792,7 @@ A Product Footprint with a <{ShipmentFootprint}> highlighted:
   </pre>
 </div>
 
-## TOC example ## {#appendix-b-toc-example}
+### TOC example ### {#appendix-b-toc-example}
 
 A Product Footprint with a <{TOC}> highlighted:
 
@@ -4803,7 +4872,7 @@ A Product Footprint with a <{TOC}> highlighted:
   </pre>
 </div>
 
-## HOC example ## {#appendix-b-hoc-example}
+### HOC example ### {#appendix-b-hoc-example}
 
 A Product Footprint with a <{HOC}> highlighted:
 
@@ -5133,7 +5202,7 @@ Issue: We're still refering to PACT Methodology v2. We should move to v3, but ma
           "Verena Ehrler",
           "Andrea Schön"
         ],
-        "href": "https://smart-freight-centre-media.s3.amazonaws.com/documents/GLEC_FRAMEWORK_v3.1_March_2025_1-3.pdf",
+        "href": "https://specs.ileap.global/TR/2025/glec-framework-v3.1/GLEC_FRAMEWORK_v3.1_March_2025_1-3.pdf",
         "title": "Global Logistics Emissions Council Framework; V3.1 (2025)",
         "status": "LS",
         "publisher": "Smart Freight Centre (SFC)"
@@ -5157,14 +5226,14 @@ Issue: We're still refering to PACT Methodology v2. We should move to v3, but ma
     },
     "PACT-V2": {
       "authors": [],
-      "href": "https://www.wbcsd.org/wp-content/uploads/2023/01/Pathfinder-Framework-Version-2.0.pdf",
+      "href": "https://wbcsd.github.io/tr/methodology/2.0/framework.pdf",
       "title": "Pathfinder Framework: Guidance for the Accounting and Exchange of Product Life Cycle Emissions (Version 2.0)",
       "status": "LS",
       "publisher": "WBCSD"
     },
     "PACT-V3": {
       "authors": [ "World Business Council for Sustainable Development (WBCSD) PACT Team" ],
-      "href": "https://github.com/wbcsd/tr/blob/main/2025/methodology-20250625/pact-methodology-v3.0.pdf",
+      "href": "https://wbcsd.github.io/tr/methodology/3.0/pact-methodology-v3.0.pdf",
       "title": "PACT Methodology: Methodology for Calculating and Exchanging Cradle-to-Gate Product Carbon Footprints (PCFs)",
       "status": "LS",
       "publisher": "WBCSD"
